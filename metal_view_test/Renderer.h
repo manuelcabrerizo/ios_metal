@@ -28,6 +28,7 @@ typedef struct RenderBatch {
 - (void)frame_end:(RenderBatch *_Nonnull) batch;
 
 - (void)draw_quad:(matrix_float4x4)world
+          texture:(uint32_t) textureId
             batch:(RenderBatch *_Nonnull)batch;
 
 - (void)set_proj:(matrix_float4x4) proj;

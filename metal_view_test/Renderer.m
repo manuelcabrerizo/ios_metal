@@ -5,6 +5,7 @@
 //  Created by Manuel Cabrerizo on 10/06/2024.
 //
 
+#import<MetalKit/MetalKit.h>
 #import "Renderer.h"
 
 static const NSUInteger MaxFramesInFlight = 3;
@@ -13,13 +14,13 @@ static const uint32_t MaxWBufferCount = 3;
 
 static const Vertex QuadVertices[] = {
     // Pixel positions, Color coordinates
-    { {  1,  -1 },  { 1.f, 0.f, 0.f } },
-    { { -1,  -1 },  { 0.f, 1.f, 0.f } },
-    { { -1,   1 },  { 0.f, 0.f, 1.f } },
+    { {  0.5,  -0.5 },  { 1.f, 0.f, 0.f }, {1, 1} },
+    { { -0.5,  -0.5 },  { 0.f, 1.f, 0.f }, {0, 1} },
+    { { -0.5,   0.5 },  { 0.f, 0.f, 1.f }, {0, 0} },
 
-    { {  1,  -1 },  { 1.f, 0.f, 0.f } },
-    { { -1,   1 },  { 0.f, 0.f, 1.f } },
-    { {  1,   1 },  { 1.f, 0.f, 1.f } },
+    { {  0.5,  -0.5 },  { 1.f, 0.f, 0.f }, {1, 1} },
+    { { -0.5,   0.5 },  { 0.f, 0.f, 1.f }, {0, 0} },
+    { {  0.5,   0.5 },  { 1.f, 0.f, 1.f }, {1, 0} }
 };
 
 
@@ -30,7 +31,6 @@ static const Vertex QuadVertices[] = {
     id<MTLDevice> _device;
     id<MTLCommandQueue> _commandQueue;
     MTLRenderPassDescriptor *_clearScreenRenderDescriptor;
-    MTLRenderPassDescriptor *_loadScreenRenderDescriptor;
 
     id<MTLRenderPipelineState> _pipelineState;
     
@@ -38,9 +38,12 @@ static const Vertex QuadVertices[] = {
 
     // instance renderer
     id<MTLBuffer> _vbuffer[MaxFramesInFlight];
-    id<MTLBuffer>  _wbuffer[MaxFramesInFlight][MaxWBufferCount];
+    id<MTLBuffer>  _ubuffer[MaxFramesInFlight][MaxWBufferCount];
     uint32_t _quadCount;
     uint32_t _bufferIndex;
+    
+    id<MTLTexture> _texture[3];
+    
 
     
     matrix_float4x4 _proj;
@@ -61,29 +64,24 @@ static const Vertex QuadVertices[] = {
         _clearScreenRenderDescriptor = [MTLRenderPassDescriptor new];
         _clearScreenRenderDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
         _clearScreenRenderDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-        _clearScreenRenderDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 1, 1, 1);
-        
-        _loadScreenRenderDescriptor = [MTLRenderPassDescriptor new];
-        _loadScreenRenderDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
-        _loadScreenRenderDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-        _loadScreenRenderDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 1, 1, 1);
-                
+        _clearScreenRenderDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0.2, 0.2, 0.2, 1);
+                        
         id<MTLLibrary> shaderLib = [device newDefaultLibrary];
         if(!shaderLib) {
             NSLog(@"Error: couldnt create a default shader library");
-            return NULL;
+            return nil;
         }
         
         id<MTLFunction> vertexProgram = [shaderLib newFunctionWithName:@"vertexShader"];
         if(!vertexProgram) {
             NSLog(@"Error: couldnt load vertex function from shader lib");
-            return NULL;
+            return nil;
         }
         
         id<MTLFunction> fragmentProgram = [shaderLib newFunctionWithName:@"fragmentShader"];
         if(!fragmentProgram) {
             NSLog(@"Error: couldnt load fragment function from shader lib");
-            return NULL;
+            return nil;
         }
         
         // create a pipeline state descriptor to create a compile pipeline state object
@@ -92,12 +90,20 @@ static const Vertex QuadVertices[] = {
         pipelineDescriptor.vertexFunction = vertexProgram;
         pipelineDescriptor.fragmentFunction = fragmentProgram;
         pipelineDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+        pipelineDescriptor.colorAttachments[0].blendingEnabled = true;
+        pipelineDescriptor.colorAttachments[0].rgbBlendOperation = MTLBlendOperationAdd;
+        pipelineDescriptor.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
+        pipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+        pipelineDescriptor.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorSourceAlpha;
+        pipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+        pipelineDescriptor.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+
         
         NSError *error;
         _pipelineState = [device newRenderPipelineStateWithDescriptor:pipelineDescriptor error:&error];
         if(!_pipelineState) {
             NSLog(@"Error: Failed aquiring pipeline state: %@", error);
-            return NULL;
+            return nil;
         }
         
         _quadCount = 0;
@@ -108,10 +114,36 @@ static const Vertex QuadVertices[] = {
                                              options:MTLResourceStorageModeShared];
             
             for(int j = 0; j < MaxWBufferCount; j++) {
-                _wbuffer[i][j] = [device newBufferWithLength:MaxQuadCount * sizeof(matrix_float4x4)
+                _ubuffer[i][j] = [device newBufferWithLength:MaxQuadCount * sizeof(Uniform)
                                                   options:MTLResourceCPUCacheModeDefaultCache];
             }
         }
+        
+        
+        // load textures using MetalKit
+        MTKTextureLoader *loader = [[MTKTextureLoader alloc] initWithDevice:device];
+        
+        NSURL *url = [[NSBundle mainBundle] URLForResource:@"link.png"  withExtension:nil];
+        _texture[0] = [loader newTextureWithContentsOfURL:url options:nil error:&error];
+        if(!_texture) {
+            NSLog(@"Error loading texturec from %@: %@", url.absoluteString, error.localizedDescription);
+            return nil;
+        }
+        
+        url = [[NSBundle mainBundle] URLForResource:@"button_out.png"  withExtension:nil];
+        _texture[1] = [loader newTextureWithContentsOfURL:url options:nil error:&error];
+        if(!_texture) {
+            NSLog(@"Error loading texturec from %@: %@", url.absoluteString, error.localizedDescription);
+            return nil;
+        }
+        
+        url = [[NSBundle mainBundle] URLForResource:@"button_in.png"  withExtension:nil];
+        _texture[2] = [loader newTextureWithContentsOfURL:url options:nil error:&error];
+        if(!_texture) {
+            NSLog(@"Error loading texturec from %@: %@", url.absoluteString, error.localizedDescription);
+            return nil;
+        }
+        
     }
     return self;
 }
@@ -148,13 +180,17 @@ static const Vertex QuadVertices[] = {
     [batch.renderEncoder setVertexBuffer:_vbuffer[_currentBuffer] offset:0 atIndex:VertexInputIndexVertices];
     [batch.renderEncoder setVertexBytes:&_view length:sizeof(matrix_float4x4) atIndex:VertexInputIndexView];
     [batch.renderEncoder setVertexBytes:&_proj length:sizeof(matrix_float4x4) atIndex:VertexInputIndexProj];
+    [batch.renderEncoder setFragmentTexture:_texture[0] atIndex:0];
+    [batch.renderEncoder setFragmentTexture:_texture[1] atIndex:1];
+    [batch.renderEncoder setFragmentTexture:_texture[2] atIndex:2];
+
     
     return batch;
 }
 
 - (void)frame_end:(RenderBatch *_Nonnull) batch {
     if(_quadCount > 0) {
-        [batch->renderEncoder setVertexBuffer:_wbuffer[_currentBuffer][_bufferIndex]
+        [batch->renderEncoder setVertexBuffer:_ubuffer[_currentBuffer][_bufferIndex]
                                        offset:0 atIndex:VertexInputIndexWorld];
         [batch->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:_quadCount];
         _quadCount = 0;
@@ -172,18 +208,20 @@ static const Vertex QuadVertices[] = {
 
 
 - (void)draw_quad:(matrix_float4x4)world
+          texture:(uint32_t) textureId
             batch:(RenderBatch *_Nonnull)batch {
     
     if(_bufferIndex == MaxWBufferCount) {
         return;
     }
     
-    matrix_float4x4 *dst = _wbuffer[_currentBuffer][_bufferIndex].contents + (sizeof(matrix_float4x4) * _quadCount);
-    memcpy(dst, &world, sizeof(matrix_float4x4));
+    Uniform *dst = _ubuffer[_currentBuffer][_bufferIndex].contents + (sizeof(Uniform) * _quadCount);
+    memcpy(&dst->world, &world, sizeof(matrix_float4x4));
+    dst->textureId = textureId;
     _quadCount++;
     
     if(_quadCount == MaxQuadCount) {
-        [batch->renderEncoder setVertexBuffer:_wbuffer[_currentBuffer][_bufferIndex]
+        [batch->renderEncoder setVertexBuffer:_ubuffer[_currentBuffer][_bufferIndex]
                                       offset:0 atIndex:VertexInputIndexWorld];
         [batch->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:_quadCount];
         _quadCount = 0;

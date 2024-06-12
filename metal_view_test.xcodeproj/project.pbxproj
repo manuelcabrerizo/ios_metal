@@ -13,6 +13,9 @@
 		6E31DFCC2C1766A30005028A /* View.m in Sources */ = {isa = PBXBuildFile; fileRef = 6E31DFCB2C1766A30005028A /* View.m */; };
 		6E31DFD02C1786D90005028A /* Renderer.m in Sources */ = {isa = PBXBuildFile; fileRef = 6E31DFCF2C1786D90005028A /* Renderer.m */; };
 		6E31DFD32C1787890005028A /* Shader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 6E31DFD22C1787890005028A /* Shader.metal */; };
+		6E8B755B2C1A284C00C6A2A0 /* link.png in Resources */ = {isa = PBXBuildFile; fileRef = 6E8B75592C1A250D00C6A2A0 /* link.png */; };
+		6EAEF2432C1A3D4C0073C083 /* button_in.png in Resources */ = {isa = PBXBuildFile; fileRef = 6EAEF2422C1A3D4C0073C083 /* button_in.png */; };
+		6EAEF2452C1A3D5C0073C083 /* button_out.png in Resources */ = {isa = PBXBuildFile; fileRef = 6EAEF2442C1A3D5C0073C083 /* button_out.png */; };
 		6EF9B4072C1798DB00525B99 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 6EF9B4062C1798DB00525B99 /* Main.storyboard */; };
 /* End PBXBuildFile section */
 
@@ -30,6 +33,9 @@
 		6E31DFCF2C1786D90005028A /* Renderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Renderer.m; sourceTree = "<group>"; };
 		6E31DFD12C1787760005028A /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
 		6E31DFD22C1787890005028A /* Shader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shader.metal; sourceTree = "<group>"; };
+		6E8B75592C1A250D00C6A2A0 /* link.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = link.png; sourceTree = "<group>"; };
+		6EAEF2422C1A3D4C0073C083 /* button_in.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = button_in.png; sourceTree = "<group>"; };
+		6EAEF2442C1A3D5C0073C083 /* button_out.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = button_out.png; sourceTree = "<group>"; };
 		6EF9B4062C1798DB00525B99 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -63,6 +69,7 @@
 		6E31DFB12C175BCD0005028A /* metal_view_test */ = {
 			isa = PBXGroup;
 			children = (
+				6E8B75582C1A24DC00C6A2A0 /* assets */,
 				6E31DFB22C175BCD0005028A /* AppDelegate.h */,
 				6E31DFB32C175BCD0005028A /* AppDelegate.m */,
 				6E31DFB82C175BCD0005028A /* ViewController.h */,
@@ -78,6 +85,16 @@
 				6EF9B4062C1798DB00525B99 /* Main.storyboard */,
 			);
 			path = metal_view_test;
+			sourceTree = "<group>";
+		};
+		6E8B75582C1A24DC00C6A2A0 /* assets */ = {
+			isa = PBXGroup;
+			children = (
+				6EAEF2442C1A3D5C0073C083 /* button_out.png */,
+				6EAEF2422C1A3D4C0073C083 /* button_in.png */,
+				6E8B75592C1A250D00C6A2A0 /* link.png */,
+			);
+			path = assets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -137,6 +154,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6EAEF2452C1A3D5C0073C083 /* button_out.png in Resources */,
+				6E8B755B2C1A284C00C6A2A0 /* link.png in Resources */,
+				6EAEF2432C1A3D4C0073C083 /* button_in.png in Resources */,
 				6EF9B4072C1798DB00525B99 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

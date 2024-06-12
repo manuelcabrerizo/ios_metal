@@ -8,6 +8,15 @@
 #import "ViewController.h"
 #import "Renderer.h"
 
+matrix_float4x4 matrix4x4_scale(float sx, float sy, float sz) {
+    return (matrix_float4x4) {{
+        { sx,  0,  0,  0 },
+        {  0, sy,  0,  0 },
+        {  0,  0, sz,  0 },
+        {  0,  0,  0,  1 }
+    }};
+}
+
 matrix_float4x4 matrix4x4_translation(float tx, float ty, float tz) {
     return (matrix_float4x4) {{
         { 1,   0,  0,  0 },
@@ -45,10 +54,66 @@ matrix_float4x4 matrix_perspective_right_hand(float fovyRadians, float aspect, f
     }};
 }
 
+matrix_float4x4 matrix_ortho(float l, float r, float b, float t, float n, float f) {
+    return (matrix_float4x4) {{
+        {2.0f / (r - l), 0, 0, 0},
+        {0, 2.0f / (t - b), 0, 0},
+        {0, 0, 1.0f / (f - n), 0},
+        {(l + r) / (l - r), (t + b) / (b - t), n / (n - f), 1}
+    }};
+}
 
+typedef struct Vec2 {
+    float x;
+    float y;
+} Vec2;
+
+Vec2 vec2_sub(Vec2 a, Vec2 b) {
+    Vec2 result;
+    result.x = a.x - b.x;
+    result.y = a.y - b.y;
+    return result;
+}
+
+Vec2 vec2_add(Vec2 a, Vec2 b) {
+    Vec2 result;
+    result.x = a.x + b.x;
+    result.y = a.y + b.y;
+    return result;
+}
+
+float vec2_dot(Vec2 a, Vec2 b) {
+    return a.x * b.x + a.y * b.y;
+}
+
+float vec2_len(Vec2 v) {
+    return sqrtf(vec2_dot(v, v));
+}
+
+Vec2 vec2_normalized(Vec2 v) {
+    float len = vec2_len(v);
+    if(len <= 0.0) {
+        return v;
+    }
+    
+    Vec2 result;
+    result.x = v.x / len;
+    result.y = v.y / len;
+    return result;
+    
+}
+
+const float MaxDistance = 16*4;
 
 @implementation ViewController {
     Renderer *_renderer;
+    
+    bool _is_touching;
+    Vec2 s_pos;
+    Vec2 c_pos;
+    
+    Vec2 hero_pos;
+
 }
 
 - (void)viewDidLoad {
@@ -64,9 +129,17 @@ matrix_float4x4 matrix_perspective_right_hand(float fovyRadians, float aspect, f
     view.metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
     _renderer = [[Renderer alloc] initWithMetalDevice:device drawablePixelFormat:view.metalLayer.pixelFormat];
     
-    float aspect = (float)view.bounds.size.width / (float)view.bounds.size.height;
-    [_renderer set_proj:matrix_perspective_right_hand(65.0f * (M_PI / 180.0f), aspect, 0.1f, 200.0f)];
-    [_renderer set_view:matrix4x4_translation(0.0, 0.0, -12.0)];
+    //float aspect = (float)view.bounds.size.width / (float)view.bounds.size.height;
+    //[_renderer set_proj:matrix_perspective_right_hand(65.0f * (M_PI / 180.0f), aspect, 0.1f, 200.0f)];
+    float hw = (float)view.bounds.size.width * 0.5f;
+    float hh = (float)view.bounds.size.height * 0.5f;
+    [_renderer set_proj:matrix_ortho(-hw, hw, -hh, hh, 0, -100.0f)];
+    //[_renderer set_proj:matrix_identity_float4x4];
+    [_renderer set_view:matrix4x4_translation(0, 0, 0)];
+    
+    _is_touching = false;
+
+
     
 }
 
@@ -75,16 +148,82 @@ matrix_float4x4 matrix_perspective_right_hand(float fovyRadians, float aspect, f
 }
 
 - (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer {
+
+    if(_is_touching) {
+        Vec2 diff = vec2_sub(s_pos, c_pos);
+        float len = vec2_len(diff);
+        if(len > MaxDistance) {
+            Vec2 dir = vec2_normalized(diff);
+            float t = MaxDistance;
+            s_pos.x = (1.0 - t) * c_pos.x + t * (c_pos.x + dir.x);
+            s_pos.y = (1.0 - t) * c_pos.y + t * (c_pos.y + dir.y);
+        }
+
+        Vec2 dir = vec2_normalized(vec2_sub(c_pos, s_pos));
+        hero_pos.x += dir.x * 6;
+        hero_pos.y += dir.y * 6;
+    }
+
     @autoreleasepool {
         RenderBatch batch = [_renderer frame_begin:layer];
         
-        for(int i = -50; i < 50; i++) {
-            matrix_float4x4 world = matrix4x4_translation(0, i*3, -20);
-            [_renderer draw_quad:world batch:&batch];
+        matrix_float4x4 world = matrix_multiply(matrix4x4_translation(hero_pos.x, hero_pos.y, -20), matrix4x4_scale(16*4, 24*4, 1));
+        [_renderer draw_quad:world texture:0 batch:&batch];
+        
+        if(_is_touching) {
+                    
+            world = matrix_multiply(matrix4x4_translation(s_pos.x, s_pos.y, -20), matrix4x4_scale(32*4, 32*4, 1));
+            [_renderer draw_quad:world texture:1 batch:&batch];
+            
+            world = matrix_multiply(matrix4x4_translation(c_pos.x, c_pos.y, -20), matrix4x4_scale(16*4, 16*4, 1));
+            [_renderer draw_quad:world texture:2 batch:&batch];
         }
         
         [_renderer frame_end:&batch];
     }
-
 }
+
+
+- (void) touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    UITouch *touch = touches.allObjects[0];
+    _is_touching = true;
+    CGPoint location = [touch locationInView:self.view];
+    s_pos.x = location.x;
+    s_pos.y = location.y;
+    c_pos = s_pos;
+    
+    s_pos.x /= (float)self.view.bounds.size.width;
+    s_pos.y /= (float)self.view.bounds.size.height;
+    s_pos.x -= 0.5f;
+    s_pos.y -= 0.5f;
+    s_pos.x *= (float)self.view.bounds.size.width;
+    s_pos.y *= -(float)self.view.bounds.size.height;
+    
+    c_pos.x /= (float)self.view.bounds.size.width;
+    c_pos.y /= (float)self.view.bounds.size.height;
+    c_pos.x -= 0.5f;
+    c_pos.y -= 0.5f;
+    c_pos.x *= (float)self.view.bounds.size.width;
+    c_pos.y *= -(float)self.view.bounds.size.height;
+    
+}
+
+- (void) touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    UITouch *touch = touches.allObjects[0];
+    CGPoint location = [touch locationInView:self.view];
+    c_pos.x = location.x;
+    c_pos.y = location.y;
+    
+    c_pos.x /= (float)self.view.bounds.size.width;
+    c_pos.y /= (float)self.view.bounds.size.height;
+    c_pos.x -= 0.5f;
+    c_pos.y -= 0.5f;
+    c_pos.x *= (float)self.view.bounds.size.width;
+    c_pos.y *= -(float)self.view.bounds.size.height;
+}
+
+- (void) touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    _is_touching = false;
+}
+
 @end
