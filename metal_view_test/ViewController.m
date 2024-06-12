@@ -76,31 +76,14 @@ matrix_float4x4 matrix_perspective_right_hand(float fovyRadians, float aspect, f
 
 - (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer {
     @autoreleasepool {
-        [_renderer frame_begin:layer];
+        RenderBatch batch = [_renderer frame_begin:layer];
         
-        RenderBatch batch;
-        
-        [_renderer render_batch_begin:&batch
-                          first_batch:true];
-        
-        for(int i = -25; i < 25; i++) {
-            for(int j = -5; j < 5; j++) {
-                matrix_float4x4 world = matrix4x4_translation(j*3, i*1.5, -50);
-                [_renderer draw_quad:world batch:&batch];
-            }
+        for(int i = -50; i < 50; i++) {
+            matrix_float4x4 world = matrix4x4_translation(0, i*3, -20);
+            [_renderer draw_quad:world batch:&batch];
         }
         
-        for(int j = -50; j < 50; j++) {
-            for(int i = -50; i < 50; i++) {
-                matrix_float4x4 world = matrix4x4_translation(j*3, i*1.5, -50);
-                [_renderer draw_quad:world batch:&batch];
-            }
-        }
-        
-        [_renderer render_batch_end:&batch];
-
-            
-        [_renderer frame_end:layer];
+        [_renderer frame_end:&batch];
     }
 
 }
