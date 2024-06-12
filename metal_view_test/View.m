@@ -89,7 +89,7 @@
     [self stopRenderLoop];
     _displayLink = [screen displayLinkWithTarget:self selector:@selector(render)];
     _displayLink.paused = self.paused;
-    _displayLink.preferredFramesPerSecond = 120;
+    _displayLink.preferredFramesPerSecond = 60;
 }
 
 - (void)didEnterBackground:(NSNotification*)notification {

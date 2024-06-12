@@ -10,5 +10,32 @@
             </PersistentString>
          </PersistentStrings>
       </ContextState>
+      <ContextState
+         contextName = "-[Renderer initWithMetalDevice:drawablePixelFormat:]:Renderer.m">
+         <PersistentStrings>
+            <PersistentString
+               value = "_wbuffer_semaphore">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "-[Renderer render_batch_end:]:Renderer.m">
+         <PersistentStrings>
+            <PersistentString
+               value = "_wbuffer[_currentBuffer][batch-&gt;bufferIndex]">
+            </PersistentString>
+            <PersistentString
+               value = "_quadCount[_currentBuffer][batch-&gt;bufferIndex]]">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "-[Renderer draw_quad:batch:]:Renderer.m">
+         <PersistentStrings>
+            <PersistentString
+               value = "_quadCount[_currentBuffer][batch-&gt;bufferIndex] ">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
    </ContextStates>
 </VariablesViewState>
