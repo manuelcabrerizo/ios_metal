@@ -137,10 +137,7 @@ const float MaxDistance = 16*4;
     //[_renderer set_proj:matrix_identity_float4x4];
     [_renderer set_view:matrix4x4_translation(0, 0, 0)];
     
-    _is_touching = false;
-
-
-    
+    _is_touching = false; 
 }
 
 - (void)drawableResize:(CGSize)size {
@@ -154,14 +151,21 @@ const float MaxDistance = 16*4;
         float len = vec2_len(diff);
         if(len > MaxDistance) {
             Vec2 dir = vec2_normalized(diff);
-            float t = MaxDistance;
-            s_pos.x = (1.0 - t) * c_pos.x + t * (c_pos.x + dir.x);
-            s_pos.y = (1.0 - t) * c_pos.y + t * (c_pos.y + dir.y);
+            s_pos.x = c_pos.x + dir.x * MaxDistance;
+            s_pos.y = c_pos.y + dir.y * MaxDistance;
         }
 
-        Vec2 dir = vec2_normalized(vec2_sub(c_pos, s_pos));
-        hero_pos.x += dir.x * 6;
-        hero_pos.y += dir.y * 6;
+        Vec2 move_dir = vec2_sub(c_pos, s_pos);
+        move_dir.x /= MaxDistance;
+        move_dir.y /= MaxDistance;
+        float move_len = vec2_len(move_dir);
+        if(move_len > 0.0) {
+            if(move_len > 1.0) {
+                move_dir = vec2_normalized(move_dir);
+            }
+            hero_pos.x += move_dir.x * 6;
+            hero_pos.y += move_dir.y * 6;
+        }
     }
 
     @autoreleasepool {
