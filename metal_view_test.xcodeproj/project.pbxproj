@@ -16,6 +16,8 @@
 		6E8B755B2C1A284C00C6A2A0 /* link.png in Resources */ = {isa = PBXBuildFile; fileRef = 6E8B75592C1A250D00C6A2A0 /* link.png */; };
 		6EAEF2432C1A3D4C0073C083 /* button_in.png in Resources */ = {isa = PBXBuildFile; fileRef = 6EAEF2422C1A3D4C0073C083 /* button_in.png */; };
 		6EAEF2452C1A3D5C0073C083 /* button_out.png in Resources */ = {isa = PBXBuildFile; fileRef = 6EAEF2442C1A3D5C0073C083 /* button_out.png */; };
+		6EDAF98B2C20D9E7009A3BC0 /* SoundSystem.c in Sources */ = {isa = PBXBuildFile; fileRef = 6EDAF98A2C20D9E7009A3BC0 /* SoundSystem.c */; };
+		6EDAF98D2C20E2D1009A3BC0 /* test.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6EDAF98C2C20E2D1009A3BC0 /* test.wav */; };
 		6EF9B4072C1798DB00525B99 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 6EF9B4062C1798DB00525B99 /* Main.storyboard */; };
 /* End PBXBuildFile section */
 
@@ -36,6 +38,9 @@
 		6E8B75592C1A250D00C6A2A0 /* link.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = link.png; sourceTree = "<group>"; };
 		6EAEF2422C1A3D4C0073C083 /* button_in.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = button_in.png; sourceTree = "<group>"; };
 		6EAEF2442C1A3D5C0073C083 /* button_out.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = button_out.png; sourceTree = "<group>"; };
+		6EDAF9892C20D9E7009A3BC0 /* SoundSystem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SoundSystem.h; sourceTree = "<group>"; };
+		6EDAF98A2C20D9E7009A3BC0 /* SoundSystem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = SoundSystem.c; sourceTree = "<group>"; };
+		6EDAF98C2C20E2D1009A3BC0 /* test.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = test.wav; sourceTree = "<group>"; };
 		6EF9B4062C1798DB00525B99 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -83,6 +88,8 @@
 				6E31DFD12C1787760005028A /* ShaderTypes.h */,
 				6E31DFD22C1787890005028A /* Shader.metal */,
 				6EF9B4062C1798DB00525B99 /* Main.storyboard */,
+				6EDAF9892C20D9E7009A3BC0 /* SoundSystem.h */,
+				6EDAF98A2C20D9E7009A3BC0 /* SoundSystem.c */,
 			);
 			path = metal_view_test;
 			sourceTree = "<group>";
@@ -90,6 +97,7 @@
 		6E8B75582C1A24DC00C6A2A0 /* assets */ = {
 			isa = PBXGroup;
 			children = (
+				6EDAF98C2C20E2D1009A3BC0 /* test.wav */,
 				6EAEF2442C1A3D5C0073C083 /* button_out.png */,
 				6EAEF2422C1A3D4C0073C083 /* button_in.png */,
 				6E8B75592C1A250D00C6A2A0 /* link.png */,
@@ -154,6 +162,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6EDAF98D2C20E2D1009A3BC0 /* test.wav in Resources */,
 				6EAEF2452C1A3D5C0073C083 /* button_out.png in Resources */,
 				6E8B755B2C1A284C00C6A2A0 /* link.png in Resources */,
 				6EAEF2432C1A3D4C0073C083 /* button_in.png in Resources */,
@@ -170,6 +179,7 @@
 			files = (
 				6E31DFD32C1787890005028A /* Shader.metal in Sources */,
 				6E31DFCC2C1766A30005028A /* View.m in Sources */,
+				6EDAF98B2C20D9E7009A3BC0 /* SoundSystem.c in Sources */,
 				6E31DFBA2C175BCD0005028A /* ViewController.m in Sources */,
 				6E31DFB42C175BCD0005028A /* AppDelegate.m in Sources */,
 				6E31DFD02C1786D90005028A /* Renderer.m in Sources */,

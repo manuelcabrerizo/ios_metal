@@ -8,6 +8,71 @@
 #import "ViewController.h"
 #import "Renderer.h"
 
+#import <AVFoundation/AVFoundation.h>
+
+
+#include "SoundSystem.h"
+
+
+
+typedef struct WaveFileHeader
+{
+	//the main chunk
+	unsigned char m_szChunkID[4];
+	unsigned int m_nChunkSize;
+	unsigned char m_szFormat[4];
+
+	//sub chunk 1 "fmt "
+	unsigned char m_szSubChunk1ID[4];
+	unsigned int m_nSubChunk1Size;
+	unsigned short m_nAudioFormat;
+	unsigned short m_nNumChannels;
+	unsigned int m_nSampleRate;
+	unsigned int m_nByteRate;
+	unsigned short m_nBlockAlign;
+	unsigned short m_nBitsPerSample;
+
+	//sub chunk 2 "data"
+	unsigned char m_szSubChunk2ID[4];
+	unsigned int m_nSubChunk2Size;
+
+	//then comes the data!
+} WaveFileHeader;
+
+MacSoundStream LoadWavFile(const char *szFileName) {
+
+    FILE *file = fopen(szFileName, "rb");
+    if(!file) {
+        MacSoundStream zero = {};
+        return zero;
+    }
+    // go to the end of the file
+    fseek(file, 0, SEEK_END);
+    // get the size of the file to alloc the memory we need
+    long int fileSize = ftell(file);
+    // go back to the start of the file
+    fseek(file, 0, SEEK_SET);
+    // alloc the memory
+    unsigned char *wavData = (unsigned char *)malloc(fileSize + 1);
+    memset(wavData, 0, fileSize + 1);
+    // store the content of the file
+    fread(wavData, fileSize, 1, file);
+    wavData[fileSize] = '\0'; // null terminating string...
+    fclose(file);
+
+   
+    WaveFileHeader *header = (WaveFileHeader *)wavData;
+    void *data = (wavData + sizeof(WaveFileHeader)); 
+
+    MacSoundStream stream;
+    stream.data = data;
+    stream.size = header->m_nSubChunk2Size;
+    return stream;
+}
+
+
+#define PI 3.14159265359
+
 matrix_float4x4 matrix4x4_scale(float sx, float sy, float sz) {
     return (matrix_float4x4) {{
         { sx,  0,  0,  0 },
@@ -103,17 +168,33 @@ Vec2 vec2_normalized(Vec2 v) {
     
 }
 
+OSStatus core_audio_callback(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags,
+                             const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber,
+                             UInt32 inNumberFrames, AudioBufferList *ioData) {
+
+    return noErr;
+}
+
 const float MaxDistance = 16*4;
 
+static MacSoundSystem sound_system;
+
+
 @implementation ViewController {
+    // the rederer
     Renderer *_renderer;
-    
+    // input handling    
     bool _is_touching;
     Vec2 s_pos;
     Vec2 c_pos;
-    
+    // hero data
     Vec2 hero_pos;
+    float hero_rot;
 
+    AUAudioUnit *_audio_unit;
+
+    MacSoundHandle sound_handle;
+    MacSoundStream stream;
 }
 
 - (void)viewDidLoad {
@@ -138,6 +219,71 @@ const float MaxDistance = 16*4;
     [_renderer set_view:matrix4x4_translation(0, 0, 0)];
     
     _is_touching = false; 
+
+    // Initialize the audio unit
+    AudioComponentDescription defaultOutputDescription;
+    defaultOutputDescription.componentType = kAudioUnitType_Output;
+    defaultOutputDescription.componentSubType = kAudioUnitSubType_RemoteIO;
+    defaultOutputDescription.componentManufacturer = kAudioUnitManufacturer_Apple;
+    defaultOutputDescription.componentFlags = 0;
+    defaultOutputDescription.componentFlagsMask = 0;
+
+    NSError *error = nil;
+    _audio_unit = [[AUAudioUnit alloc] initWithComponentDescription:defaultOutputDescription error:&error];
+
+    // init render callback struct for core audio
+    _audio_unit.outputProvider = ^AUAudioUnitStatus(AudioUnitRenderActionFlags * _Nonnull actionFlags,
+                                                    const AudioTimeStamp * _Nonnull timestamp,
+                                                    AUAudioFrameCount frameCount,
+                                                    NSInteger inputBusNumber,
+                                                    AudioBufferList * _Nonnull inputData) {
+        return CoreAudioCallback(&sound_system, actionFlags, timestamp, (UInt32)inputBusNumber, (UInt32)frameCount, inputData);
+    };
+    
+    AudioStreamBasicDescription streamFormat;
+    streamFormat.mSampleRate = 44100;
+    streamFormat.mFormatID = kAudioFormatLinearPCM;
+    streamFormat.mFormatFlags = kAudioFormatFlagIsPacked | kAudioFormatFlagIsSignedInteger; 
+    streamFormat.mFramesPerPacket = 1;
+    streamFormat.mBytesPerPacket = 2 * sizeof(short);
+    streamFormat.mChannelsPerFrame = 2;
+    streamFormat.mBitsPerChannel =  sizeof(short) * 8;
+    streamFormat.mBytesPerFrame = 2 * sizeof(short);
+    
+    AVAudioFormat *audioFormat = [[AVAudioFormat alloc] initWithStreamDescription:&streamFormat];
+    [_audio_unit.inputBusses[0] setFormat:audioFormat error:&error];
+
+    // init audio
+    MacSoundSysInitialize(&sound_system, 1024);
+
+    // load our sound file
+    NSString *soundPath = [[NSBundle mainBundle] pathForResource: [NSString stringWithUTF8String:"test"] ofType: @"wav"];
+    if(soundPath != nil) {
+        stream = LoadWavFile([soundPath UTF8String]);
+        sound_handle = MacSoundSysAdd(&sound_system, stream, true, true);
+    }
+    else {
+        stream.data = NULL;
+        stream.size = 0;
+        sound_handle = -1;
+    }
+
+    if(sound_handle > -1) {
+        MacSoundSysPlay(&sound_system, sound_handle);
+    }
+
+    [_audio_unit allocateRenderResourcesAndReturnError:&error];
+    if(error) {
+        NSLog(@"Error allocating render resources: %@", error.localizedDescription);    
+    }
+    
+    [_audio_unit startHardwareAndReturnError:&error];
+    if (error) {
+        NSLog(@"Error starting audio unit: %@", error);
+        return;
+    }
+
+
 }
 
 - (void)drawableResize:(CGSize)size {
@@ -165,13 +311,16 @@ const float MaxDistance = 16*4;
             }
             hero_pos.x += move_dir.x * 6;
             hero_pos.y += move_dir.y * 6;
+            move_dir = vec2_normalized(move_dir);
+            hero_rot = atan2(move_dir.y, move_dir.x);
+
         }
     }
 
     @autoreleasepool {
         RenderBatch batch = [_renderer frame_begin:layer];
-        
-        matrix_float4x4 world = matrix_multiply(matrix4x4_translation(hero_pos.x, hero_pos.y, -20), matrix4x4_scale(16*4, 24*4, 1));
+        vector_float3 rot_axis = {0, 0, 1};
+        matrix_float4x4 world = matrix_multiply(matrix4x4_translation(hero_pos.x, hero_pos.y, -20),matrix_multiply(matrix4x4_rotation(hero_rot - PI/2, rot_axis), matrix4x4_scale(16*4, 24*4, 1)));
         [_renderer draw_quad:world texture:0 batch:&batch];
         
         if(_is_touching) {
@@ -182,7 +331,7 @@ const float MaxDistance = 16*4;
             world = matrix_multiply(matrix4x4_translation(c_pos.x, c_pos.y, -20), matrix4x4_scale(16*4, 16*4, 1));
             [_renderer draw_quad:world texture:2 batch:&batch];
         }
-        
+    
         [_renderer frame_end:&batch];
     }
 }

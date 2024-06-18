@@ -34,7 +34,7 @@ static const Vertex QuadVertices[] = {
 
     id<MTLRenderPipelineState> _pipelineState;
     
-    id<CAMetalDrawable> currentDrawable;
+    id<CAMetalDrawable> _currentDrawable;
 
     // instance renderer
     id<MTLBuffer> _vbuffer[MaxFramesInFlight];
@@ -169,11 +169,11 @@ static const Vertex QuadVertices[] = {
     _bufferIndex = 0;
     _quadCount = 0;
     
-    currentDrawable = [layer nextDrawable];
+    _currentDrawable = [layer nextDrawable];
 
     RenderBatch batch;
     batch.commandBuffer = [_commandQueue commandBuffer];
-    _clearScreenRenderDescriptor.colorAttachments[0].texture = currentDrawable.texture;
+    _clearScreenRenderDescriptor.colorAttachments[0].texture = _currentDrawable.texture;
     batch.renderEncoder = [batch.commandBuffer renderCommandEncoderWithDescriptor:_clearScreenRenderDescriptor];
     
     [batch.renderEncoder setRenderPipelineState:_pipelineState];
@@ -197,7 +197,7 @@ static const Vertex QuadVertices[] = {
     }
     
     [batch->renderEncoder endEncoding];
-    [batch->commandBuffer presentDrawable:currentDrawable];
+    [batch->commandBuffer presentDrawable:_currentDrawable];
 
     __block dispatch_semaphore_t block_semaphore = _inFlightSemaphore;
     [batch->commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
@@ -207,9 +207,9 @@ static const Vertex QuadVertices[] = {
 }
 
 
-- (void)draw_quad:(matrix_float4x4)world
+- (void)draw_quad:(matrix_float4x4) world
           texture:(uint32_t) textureId
-            batch:(RenderBatch *_Nonnull)batch {
+            batch:(RenderBatch *_Nonnull) batch {
     
     if(_bufferIndex == MaxWBufferCount) {
         return;
@@ -222,8 +222,12 @@ static const Vertex QuadVertices[] = {
     
     if(_quadCount == MaxQuadCount) {
         [batch->renderEncoder setVertexBuffer:_ubuffer[_currentBuffer][_bufferIndex]
-                                      offset:0 atIndex:VertexInputIndexWorld];
-        [batch->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:_quadCount];
+                                       offset:0 atIndex:VertexInputIndexWorld];
+
+        [batch->renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle 
+                                 vertexStart:0
+                                 vertexCount:6
+                               instanceCount:_quadCount];
         _quadCount = 0;
         _bufferIndex++;
     }
